@@ -18,18 +18,22 @@
 #include "imagenes/mario_muerto.h"
 #include "imagenes/enemigo_muerto.h"
 #include "imagenes/game_over.h"
+#include "imagenes/game_winer.h"
+#include "imagenes/inicio.h"
 #include "imagenes/fondo4.h"
 #include "imagenes/fondo5.h"
 #include "imagenes/fondo6.h"
 #include "imagenes/enemi.h"
 #include "imagenes/enemi2.h"
 
-uint16_t posx = 42, posy = 34, posx_sal, posy_sal, posx_enemigo = 500,
-		posy_enemigo = 37,posx_enemigo_muerto, posy_enemigo_muerto,contador_muerte=0;
+uint16_t posx = 42, posy = 34, posx_sal, posy_sal, posx_enemigo = 600,
+		posy_enemigo = 37, posx_enemigo_muerto, posy_enemigo_muerto,
+		contador_muerte = 0;
 int posx_fondo_nube = 320, posy_fondo_nube = 150, posx_fondo1 = 400,
-		posy_fondo1 = 37;
+		posy_fondo1 = 37, posx_inicio = 119, posy_inicio = 70, posx_dead = 96,
+		posy_dead = 40,enemigos_dead=0;
 
-X, Y, disparo;
+
 uint32_t mario = 0;
 uint8_t SW_up = 0;
 uint8_t SW_down = 0;
@@ -42,7 +46,8 @@ uint8_t direccion_down = 1;
 uint8_t direccion_enemigo_right = 1;
 uint8_t direccion_enemigo_left = 1;
 uint8_t state = 8, actualizar_state = 1, state_active, contador = 0,
-		enemigo1 = 1, fondo0 = 1,enemigo2 = 1,enemigo_muerto=0;
+		mario_dead = 0, enemigo1 = 1, fondo0 = 1, enemigo2 = 1, enemigo_muerto =
+				0, flag_inicio = 1;
 
 void State();
 void Swich();
@@ -87,18 +92,33 @@ int main(void) {
 
 		}
 
+		if (flag_inicio) {
+			if (state == run_derecha) {
+				if (posx_inicio > -200) {
+					posx_inicio = posx_inicio - 3;
+				} else {
+					flag_inicio = 0;
+				}
 
+			}
+			VGA_DrawImageAlpha(&inicio, posx_inicio, posy_inicio, 0x73);
+
+		}
 
 		if (enemigo1) {
-			if(enemigo_muerto){
+			if(enemigos_dead <= -3 || enemigos_dead >=3){
+				enemigo1=0;
+			}
+			if (enemigo_muerto) {
 				contador_muerte++;
-				if(contador_muerte<50){
-				VGA_DrawImageAlpha(&enemi_muerto, posx_enemigo_muerto, posy_enemigo_muerto, 0x73);
-				}else{
-					enemigo_muerto=0;
-					contador_muerte=0;
+				if (contador_muerte < 50) {
+					VGA_DrawImageAlpha(&enemi_muerto, posx_enemigo_muerto,
+							posy_enemigo_muerto, 0x73);
+				} else {
+					enemigo_muerto = 0;
+					contador_muerte = 0;
 				}
-				}
+			}
 
 			if (mario++ % 8 > 3) {
 				VGA_DrawImageAlpha(&enemi1, posx_enemigo, posy_enemigo, 0x73);
@@ -125,16 +145,67 @@ int main(void) {
 				}
 			}
 
+		}else{
+			if (enemigos_dead > 1){
+				VGA_DrawImageAlpha(&game_winer, 85,20, 0x00);
+			}else{
+				VGA_DrawImageAlpha(&game_over, 85,20, 0x00);
+			}
+
+
+
+
 		}
 
+
 		Muerte();
-		State();
 
+		if (mario_dead == 1) {
+			VGA_DrawImageAlpha(&mario_muerto, posx_dead, posy_dead, 0x73);
 
+			if (contador > 10) {
+				direccion_down = 0;
+				direccion_up = 1;
+				contador--;
+				posy_dead = posy_dead+1;
 
+				if (mario++ % 8 > 3) {
+					VGA_DrawImageAlpha(&mario_muerto, posx_dead, posy_dead,
+							0x73);
+				} else {
+					VGA_DrawImageAlpha(&mario_muerto, posx_dead, posy_dead,
+							0x73);
+				}
 
+			} else {
+				if (contador > 0) {
+					direccion_down = 1;
+					direccion_up = 0;
+					contador--;
+					posy_dead = posy_dead - 4;
+
+					if (mario++ % 8 > 3) {
+						VGA_DrawImageAlpha(&mario_muerto, posx_dead, posy_dead,
+								0x73);
+					} else {
+						VGA_DrawImageAlpha(&mario_muerto, posx_dead, posy_dead,
+								0x73);
+					}
+
+				} else {
+					mario_dead = 0;
+				}
+
+			}
+		} else {
+			if(enemigos_dead>=-2){
+				State();
+			}
+
+		}
 
 		bsp_draw();
+
 	}
 }
 
@@ -156,17 +227,12 @@ void Swich() {
 		actualizar_state = 1;
 		state = run_izquierda;
 		SW_left = 1;
-		if (posx > 10) {
+		if (posx > 5) {
 			posx = posx - 5;
 		}
 	}
 
-	if (get_sw_state(SW_DISC)) {
-		actualizar_state = 1;
-		disparo = 1;
-		X = posx + 7;
-		Y = posy + 14;
-	}
+
 	if (!get_sw_state(SW_RIGHT) && !get_sw_state(SW_UP)) {
 
 		if (SW_up == 0) {
@@ -198,12 +264,12 @@ void Swich() {
 		SW_up = 0;
 	}
 
-	if (!get_sw_state(SW_DOWN)) {
-		actualizar_state = 1;
-		state = abajo_izquierda;
-		//contador = 10;
-		SW_down = 1;
-	}
+	/*	if (!get_sw_state(SW_DOWN)) {
+	 actualizar_state = 1;
+	 state = abajo_izquierda;
+	 //contador = 10;
+	 SW_down = 1;
+	 }*/
 	if (contador == 0 && SW_up == 1 && get_sw_state(SW_DOWN)
 			&& get_sw_state(SW_RIGHT) && get_sw_state(SW_LEFT)) {
 		if (direccion_left && direccion_right == 0) {
@@ -248,7 +314,7 @@ void State() {
 		break;
 	case run_izquierda:
 		posx_fondo_nube = posx_fondo_nube + 5;
-				posx_fondo1 = posx_fondo1 + 5;
+		posx_fondo1 = posx_fondo1 + 5;
 		if (mario++ % 8 > 3) {
 			VGA_DrawImageAlpha(&mario_izq0, posx, posy, 0x53);
 		} else {
@@ -257,10 +323,10 @@ void State() {
 		break;
 	case salto:
 		if (contador > 5) {
-			direccion_down=0;
-			direccion_up=1;
+			direccion_down = 0;
+			direccion_up = 1;
 			contador--;
-			posy = posy + 5;
+			posy = posy + 6;
 			if (direccion_left) {
 				if (mario++ % 8 > 3) {
 					VGA_DrawImageAlpha(&mario_sal_izq0, posx, posy, 0x53);
@@ -278,10 +344,10 @@ void State() {
 
 		} else {
 			if (contador > 0) {
-				direccion_down=1;
-				direccion_up=0;
+				direccion_down = 1;
+				direccion_up = 0;
 				contador--;
-				posy = posy - 5;
+				posy = posy - 6;
 				if (direccion_left) {
 					if (mario++ % 8 > 3) {
 						VGA_DrawImageAlpha(&mario_sal_izq0, posx, posy, 0x53);
@@ -305,13 +371,13 @@ void State() {
 		posx_fondo_nube = posx_fondo_nube - 10;
 		posx_fondo1 = posx_fondo1 - 10;
 		if (contador > 5) {
-			direccion_down=0;
-						direccion_up=1;
+			direccion_down = 0;
+			direccion_up = 1;
 			contador--;
 			if (posx < 300) {
 				posx = posx + 4;
 			}
-			posy = posy + 5;
+			posy = posy + 6;
 			if (mario++ % 8 > 3) {
 				VGA_DrawImageAlpha(&mario_sal_der2, posx, posy, 0x53);
 			} else {
@@ -319,13 +385,13 @@ void State() {
 			}
 		} else {
 			if (contador > 0) {
-				direccion_down=1;
-							direccion_up=0;
+				direccion_down = 1;
+				direccion_up = 0;
 				contador--;
 				if (posx < 300) {
 					posx = posx + 4;
 				}
-				posy = posy - 5;
+				posy = posy - 6;
 				if (mario++ % 8 > 3) {
 					VGA_DrawImageAlpha(&mario_sal_der2, posx, posy, 0x53);
 				} else {
@@ -338,17 +404,17 @@ void State() {
 		break;
 	case salto_izquierda:
 		posx_fondo_nube = posx_fondo_nube + 5;
-						posx_fondo1 = posx_fondo1 + 5;
+		posx_fondo1 = posx_fondo1 + 5;
 
 		if (contador > 5) {
-			direccion_down=0;
-						direccion_up=1;
+			direccion_down = 0;
+			direccion_up = 1;
 			contador--;
 
 			if (posx > 10) {
 				posx = posx - 4;
 			}
-			posy = posy + 5;
+			posy = posy + 6;
 			if (mario++ % 8 > 3) {
 				VGA_DrawImageAlpha(&mario_sal_izq0, posx, posy, 0x53);
 			} else {
@@ -356,13 +422,13 @@ void State() {
 			}
 		} else {
 			if (contador > 0) {
-				direccion_down=1;
-							direccion_up=0;
+				direccion_down = 1;
+				direccion_up = 0;
 				contador--;
 				if (posx > 10) {
 					posx = posx - 4;
 				}
-				posy = posy - 5;
+				posy = posy - 6;
 				if (mario++ % 8 > 3) {
 					VGA_DrawImageAlpha(&mario_sal_izq0, posx, posy, 0x53);
 				} else {
@@ -410,26 +476,40 @@ void State() {
 }
 
 void Muerte() {
-if(posy<100&&posy_enemigo<100){
-	if ((posx+15)> (posx_enemigo+5)) {
-		if((posx+15)< posx_enemigo+20){
-			if(posy+3>posy_enemigo){
-				if((posy-posy_enemigo)< 13 ){
-					if(direccion_up==0){
-						enemigo_muerto=1;
-						posy_enemigo_muerto=37;
-						posx_enemigo_muerto=posx_enemigo;
-						posx_enemigo=500;
-					}else{
-						posx=5;
-						posx_enemigo=500;
+
+	if ((posx + 15) > (posx_enemigo + 5)) {
+		if ((posx + 15) < posx_enemigo + 20) {
+			if (posy + 3 > posy_enemigo) {
+				if ((posy - posy_enemigo) < 9) {
+					if (direccion_up == 0) {
+						enemigos_dead++;
+						enemigo_muerto = 1;
+						posy_enemigo_muerto = 37;
+						posx_enemigo_muerto = posx_enemigo;
+						posx_enemigo = 500;
+					} else {
+						// murio mario
+						enemigos_dead--;
+						contador = 20;
+						mario_dead = 1;
+						posx_dead = posx;
+						posy_dead = posy;
+						posx = 5;
+						posy = 34 ;
+						posx_enemigo = 500;
 					}
 
 				}
-			}else{
+			} else {
 				//murio mario
-				posx=5;
-				posx_enemigo=500;
+				enemigos_dead--;
+				contador = 20;
+				mario_dead = 1;
+				posx_dead = posx;
+				posy_dead = posy;
+				posx = 5;
+				posy = 34 ;
+				posx_enemigo = 500;
 
 			}
 		}
@@ -437,7 +517,4 @@ if(posy<100&&posy_enemigo<100){
 	}
 
 }
-}
-
-
 
